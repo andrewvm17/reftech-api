@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from logic.detector_v2 import detect_lines_with_new_algorithm
+from logic.detector_v2 import detector
 import logging
 from werkzeug.exceptions import HTTPException
 
@@ -80,7 +80,7 @@ def get_lines():
         logger.info("Image received and converted for processing.")
 
         # 4. Detect lines using the core logic
-        line = detect_lines_with_new_algorithm(cv_img)
+        line = detector(cv_img)
 
         if line:
             # Convert the line tuple to a JSON-serializable format
