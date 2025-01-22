@@ -4,3 +4,10 @@ __pycache__
 venv
 .env
 tests/
+.gitignore
+__pycache__/
+*.pyc
+venv/
+.git
+.gitignore
+.DS_Store
