@@ -1,59 +1,47 @@
 #!/usr/bin/env python3
 import sys
-from logic.line_clustering import group_by_dbscan
 import cv2
 import numpy as np
 import imutils
+from line_clustering import group_by_dbscan
 
 def detector(input_image):
     """
-    Applies the 'new algorithm' flow:
-      1) Resize the image
-      2) Gaussian blur
-      3) Grayscale
-      4) Morphological CLOSE
-      5) Canny edge detection
-      6) Another morph CLOSE
-      7) HoughLinesP
-      8)
-    Returns:
-      edges   - the post-processed edges
-      output  - a blank image with the detected lines drawn
+    Refactored flow for detecting white lines on a soccer field:
+
+      1) Resize image
+      2) Extract field mask
+      3) Canny edge detection
+      4) HoughLinesP
+      5) Remove purely horizontal/vertical lines
+      6) Display intermediate steps (optional)
     """
 
-    # (1) Resize to improve detection (scale factor ~1.6)
-    scale_width = int(input_image.shape[1] * 1.6)
-    resized = imutils.resize(input_image, width=scale_width)
+    # (1) Resize image
+    scale_factor = 1.6
+    new_width = int(input_image.shape[1] * scale_factor)
+    resized = imutils.resize(input_image, width=new_width)
 
-    # (2) Gaussian blur
+    # (2) Extract field mask
+    hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
+    lower_green = np.array([35, 10, 60])
+    upper_green = np.array([65, 255, 255])
+    field_mask = cv2.inRange(hsv, lower_green, upper_green)
+    field_layer = cv2.bitwise_and(resized, resized, mask=field_mask)
+
+    # (3) Canny edge detection
     kernel_size = 3
-    blurred = cv2.GaussianBlur(input_image, (kernel_size, kernel_size), 0)
-
-    # (3) Convert to grayscale
+    blurred = cv2.GaussianBlur(resized, (kernel_size, kernel_size), 0)
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+    # No more morphological close – directly run Canny on gray
+    low_threshold, high_threshold = 5, 50
+    edges = cv2.Canny(gray, low_threshold, high_threshold)
 
-    # (4) Morphological CLOSE (to improve edges detection)
-    kernel0 = np.ones((9, 27), np.uint8)
-    closed_before_canny = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel0)
-
-    # (5) Canny edge detection
-    low_threshold = 5
-    high_threshold = 50
-    edges = cv2.Canny(closed_before_canny, low_threshold, high_threshold)
-
-    # (6) Another morph CLOSE to merge edges
-    kernel2 = np.ones((8, 24), np.uint8)
-    closed_edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel2)
-
-    # (7) HoughLinesP
-    rho = 1
-    theta = np.pi / 180
-    threshold = 30
-    min_line_length = 300
-    max_line_gap = 20
-
+    # (4) HoughLinesP on plain edges (no morphological close)
+    rho, theta, threshold = 1, np.pi / 180, 30
+    min_line_length, max_line_gap = 300, 20
     lines = cv2.HoughLinesP(
-        closed_edges,
+        edges,
         rho,
         theta,
         threshold,
@@ -61,52 +49,66 @@ def detector(input_image):
         maxLineGap=max_line_gap
     )
 
-    # Create a blank image (same size as the resized image) to draw lines on
-    output = np.zeros_like(resized)
-
+    # (5) Cluster lines by slope, then draw only the longest line per cluster
+    output = resized.copy()
     line_list = []
     slope_list = []
 
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            # Calculate the slope of the line
             slope = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
-            
-            # Filter out purely vertical (slope ~90 or ~-90) and horizontal (slope ~0 or ~180) lines
-            if not (slope == 0 or slope == 180 or slope == 90 or slope == -90):
-                # Store line details for later processing
+            # Skip purely horizontal/vertical lines
+            if slope not in (0, 180, 90, -90):
                 line_list.append(((x1, y1), (x2, y2), slope))
                 slope_list.append(slope)
 
-    clusters = group_by_dbscan(slope_list)
-    longest_lines = []
-    for cluster in clusters:
-        # Find the longest line in the cluster
-        longest_line = None
-        max_length = 0
-        for line, slope in zip(line_list, slope_list):
-            
-            if slope in cluster:
-                x1, y1 = line[0]
-                x2, y2 = line[1]
-                length = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-                if length > max_length:
-                    max_length = length
-                    longest_line = line
-        longest_lines.append(longest_line)
-        # Draw the longest line in the cluster
-        if longest_line:
-            x1, y1= longest_line[0]
-            x2, y2 = longest_line[1]
-            thickness = 2
-            cv2.line(output, (x1, y1), (x2, y2), (255, 255, 255), thickness)
+    if slope_list:
+        clusters = group_by_dbscan(slope_list)
+        for cluster in clusters:
+            longest_line = None
+            max_length = 0
+            for (line_vals, slope_val) in zip(line_list, slope_list):
+                if slope_val in cluster:
+                    (pt1, pt2, _) = line_vals
+                    x1, y1 = pt1
+                    x2, y2 = pt2
+                    length = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+                    if length > max_length:
+                        max_length = length
+                        longest_line = line_vals
 
-    #temp return
-    
-    print(longest_lines[0])
-    return (longest_lines[0])
-    
-    #return closed_edges, output
+            if longest_line:
+                x1, y1 = longest_line[0]
+                x2, y2 = longest_line[1]
+                cv2.line(output, (x1, y1), (x2, y2), (255, 255, 255), 2)
+
+    # Now we just return edges (no morphological closed_edges)
+    return resized, field_layer, edges, lines, output
 
 
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 detector_v2.py <image_path>")
+        sys.exit(1)
+
+    image_path = sys.argv[1]
+    original = cv2.imread(image_path)
+    if original is None:
+        print(f"Error: Could not open or find the image '{image_path}'.")
+        sys.exit(1)
+
+    # Adjusted return signature (dropped closed_edges)
+    resized, field_layer, edges, lines, final_output = detector(original)
+
+    # Show relevant outputs
+    cv2.imshow("Edges", edges)
+    cv2.imshow("Final Output (White Lines)", final_output)
+
+    print("Press any key to close.")
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
