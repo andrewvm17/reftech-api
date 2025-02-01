@@ -57,7 +57,7 @@ def detector_v4(input_image):
             slope = (y2 - y1) / (x2 - x1)
             # Skip purely horizontal (slope == 0)
             if slope != 0:
-                hough_lines.append([x1, y1, x2, y2])
+                hough_lines.append([x1, y1, x2, y2, slope])
 
     return hough_lines
 
