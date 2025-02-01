@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from logic.detector_v4 import detector
+from logic.detector_v4 import detector_v4
 import logging
 from werkzeug.exceptions import HTTPException
 
