@@ -80,10 +80,22 @@ def get_lines():
         logger.info("Image received and converted for processing.")
 
         # 4. Detect lines using the core logic
-        lines = detector_v4(cv_img)
+        lines_raw = detector_v4(cv_img)
 
-        if lines:
-            return jsonify({"lines": lines}), 200
+        # Convert to standard Python data types
+        lines_serializable = []
+        for line in lines_raw:
+            x1, y1, x2, y2, slope = line
+            lines_serializable.append([
+                int(x1), 
+                int(y1), 
+                int(x2), 
+                int(y2), 
+                float(slope)
+            ])
+
+        if lines_serializable:
+            return jsonify({"lines": lines_serializable}), 200
         else:
             logger.info("No lines detected in the image.")
             return jsonify({"line": None}), 200
