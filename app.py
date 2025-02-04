@@ -12,7 +12,7 @@ from werkzeug.exceptions import HTTPException
 
 # Import your detector and clustering logic
 from logic.detector_v4 import detector_v4
-from logic.clustering import cluster_lines, best_fit_lines_from_clusters
+from logic.line_clustering import cluster_lines, best_fit_lines_from_clusters
 
 # Initialize Flask app
 app = Flask(__name__)
