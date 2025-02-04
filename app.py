@@ -94,7 +94,7 @@ def get_lines():
         for cluster_label, line in best_fit.items():
             x1, y1, x2, y2, slope = line
             best_fit_serializable.append({
-                "cluster": int(cluster_label),
+
                 "x1": int(x1),
                 "y1": int(y1),
                 "x2": int(x2),
