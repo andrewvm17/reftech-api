@@ -82,6 +82,9 @@ def get_lines():
         # 4. Detect lines using the core logic
         lines_raw = detector_v4(cv_img)
 
+
+        # cluster lines by slope / position
+        # 
         # Convert to standard Python data types
         lines_serializable = []
         for line in lines_raw:

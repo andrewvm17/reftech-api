@@ -12,8 +12,8 @@ def detector(input_image):
       1) Resize image
       2) Extract field mask
       3) Canny edge detection
-      4) HoughLinesP
-      5) Remove purely horizontal/vertical lines
+      4) HoughLinesP (probabalistic hough transform)
+      5) Remove purely horizontal/vertical lines (so we can avoid false positives)
       6) Display intermediate steps (optional)
     """
 

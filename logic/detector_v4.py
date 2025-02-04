@@ -3,6 +3,8 @@
 import sys
 import cv2
 import numpy as np
+from logic.line_clustering import cluster_lines
+
 
 def detector_v4(input_image):
     """
@@ -57,8 +59,12 @@ def detector_v4(input_image):
             slope = (y2 - y1) / (x2 - x1)
             # Skip purely horizontal (slope == 0)
             if slope != 0:
+                print(x1, y1, x2, y2, slope)
                 hough_lines.append([x1, y1, x2, y2, slope])
 
+    clusters = cluster_lines(hough_lines)
+    print(clusters)
+    print(hough_lines)
     return hough_lines
 
 
