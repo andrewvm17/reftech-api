@@ -77,24 +77,7 @@ def get_lines():
         lines = []
         for line in detected_lines:
             x1, y1, x2, y2, slope = line
-            lines.append([
-                int(x1),
-                int(y1),
-                int(x2),
-                int(y2),
-                float(slope)
-            ])
-
-        # 6. Cluster the lines and compute a best-fit line for each cluster.
-        clusters = cluster_lines(lines, eps=0.5, min_samples=2)
-        best_fit = best_fit_lines_from_clusters(clusters, ignore_noise=True)
-
-        # 7. Convert the best-fit lines into a JSON-serializable list.
-        best_fit_serializable = []
-        for cluster_label, line in best_fit.items():
-            x1, y1, x2, y2, slope = line
-            best_fit_serializable.append({
-
+            lines.append({
                 "x1": int(x1),
                 "y1": int(y1),
                 "x2": int(x2),
@@ -102,7 +85,8 @@ def get_lines():
                 "slope": float(slope) if slope is not None else None
             })
 
-        return jsonify({"lines": best_fit_serializable}), 200
+
+        return jsonify({"lines": lines}), 200
 
     except Exception as e:
         logger.exception("Error processing the image.")
