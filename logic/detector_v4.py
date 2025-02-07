@@ -75,8 +75,14 @@ def detector_v4(input_image):
     red_lines.sort(key=lambda ln: ln[5], reverse=True)
     longest_red_lines = red_lines[:2]
 
+    final_lines = []
+
+    for line in longest_red_lines:
+        temp = [line[0], line[1], line[2], line[3], line[4]]
+        final_lines.append(temp)
+
     # Return only the two longest "red" lines
-    return longest_red_lines
+    return final_lines
 
 
 def line_segment_intersection(l1, l2):
