@@ -68,7 +68,7 @@ def get_lines():
         #    Assume detector_v4 returns lines in the format: [x1, y1, x2, y2, slope]
         intersection_point = detector_v4(cv_img)
 
-        if not intersection_point:
+        if intersection_point is None:
             logger.info("No lines detected in the image.")
             return jsonify({"lines": []}), 200
 
