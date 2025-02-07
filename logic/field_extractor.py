@@ -22,7 +22,7 @@ def extract_field_mask(image_bgr, hue_range=10, morph_size=15):
     field_mask : np.ndarray
         A binary (single-channel) mask, where pixels belonging to the field are 255, others 0.
     """
-    cv2.imshow("original image", image_bgr)
+    #cv2.imshow("original image", image_bgr)
     # 1. Convert to HSV
     image_hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
 

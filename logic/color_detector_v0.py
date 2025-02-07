@@ -66,7 +66,7 @@ def get_prominent_colors(image_path, K=7, show_plot=False, apply_blur=True):
             start_x = end_x
         # Convert bar image from HSV to RGB for correct color display
         bar_rgb = cv2.cvtColor(bar, cv2.COLOR_HSV2RGB)
-        plt.imshow(bar_rgb)
+        #plt.imshow(bar_rgb)
         plt.title("Color Distribution (HSV clusters)")
         plt.axis("off")
         plt.show()

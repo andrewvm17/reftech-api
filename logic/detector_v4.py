@@ -24,12 +24,12 @@ def detector_v4(input_image):
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
 
     field_mask = extract_field_mask(input_image)
-    cv2.imshow("Field Mask", field_mask)
+    #cv2.imshow("Field Mask", field_mask)
     field_masked_image = cv2.bitwise_and(input_image, input_image, mask=field_mask)
-    cv2.imshow("Field Masked Image", field_masked_image)
+    #cv2.imshow("Field Masked Image", field_masked_image)
     # Keep only the green field
     frame_masked_green = cv2.bitwise_and(input_image, input_image, mask=mask_green)
-    cv2.imshow("Frame Masked Green", frame_masked_green)
+    #cv2.imshow("Frame Masked Green", frame_masked_green)
    # frame_masked_white = cv2.bitwise_and(frame_masked_green, frame_masked_green, mask=mask_white)
     #cv2.imshow("Frame Masked White", frame_masked_white)
     # Convert to grayscale
@@ -40,7 +40,7 @@ def detector_v4(input_image):
     #cv2.imshow("Thresh", thresh)
     # Canny edge detection
     canny = cv2.Canny(gray, 1, 150, apertureSize=3, L2gradient=True)
-    cv2.imshow("Canny", canny)
+    #cv2.imshow("Canny", canny)
     # Apply Hough Line Detection (Probabilistic)
     lines = cv2.HoughLinesP(
         canny,
@@ -123,7 +123,7 @@ def detector_v4(input_image):
 
         # Draw the line in green
         cv2.line(line_from_representation, (rx, ry), (bottom_x, bottom_y), (0, 255, 0), 2)
-        cv2.imshow("Intersection -> Bottom", line_from_representation)
+        #cv2.imshow("Intersection -> Bottom", line_from_representation)
     
     for pt1 in intersection_points:
         pt1_x = pt1[0]
