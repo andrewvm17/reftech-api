@@ -4,117 +4,172 @@ import sys
 import cv2
 import numpy as np
 
-from sklearn.cluster import KMeans  # pip install scikit-learn
+from line_clustering import cluster_lines
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python clustered_lines_by_slope.py <image_path>")
-        sys.exit(1)
 
-    image_path = sys.argv[1]
-    frame = cv2.imread(image_path)
-    if frame is None:
-        print(f"Error loading image: {image_path}")
-        sys.exit(1)
+def detector_v4(input_image):
+    """
+    Similar to detector_v2, this function accepts an input image and returns
+    the list of hough_lines that are neither purely vertical nor purely horizontal.
 
-    # Convert BGR -> HSV
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    :param input_image: A BGR image (NumPy array) read by OpenCV.
+    :return: A list of lines (each line is [x1, y1, x2, y2]) that passed the slope filter.
+    """
 
-    # Create a green mask (tweak these values for your field's lighting)
+    # Convert from BGR to HSV
+    hsv = cv2.cvtColor(input_image, cv2.COLOR_BGR2HSV)
+    cv2.imshow("HSV", hsv)
+    # Create a green mask (adjust lower_green and upper_green for your lighting)
     lower_green = (36, 25, 25)
     upper_green = (86, 255, 255)
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
 
-    # Keep only the green field in 'frame_masked'
-    frame_masked = cv2.bitwise_and(frame, frame, mask=mask_green)
-
+    # Keep only the green field
+    frame_masked = cv2.bitwise_and(input_image, input_image, mask=mask_green)
+    cv2.imshow("Frame Masked", frame_masked)
     # Convert to grayscale
     gray = cv2.cvtColor(frame_masked, cv2.COLOR_BGR2GRAY)
-
-    # Simple binary threshold (optional)
+    cv2.imshow("Gray", gray)
+    # Optional simple binary threshold
     _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-
+    cv2.imshow("Thresh", thresh)
     # Canny edge detection
-    canny = cv2.Canny(thresh, 50, 150, apertureSize=3)
-
-    #
-    # 1) Hough Line Detection (Probabilistic)
-    #
+    canny = cv2.Canny(thresh, 1, 150, apertureSize=3)
+    cv2.imshow("Canny", canny)
+    # Apply Hough Line Detection (Probabilistic)
     lines = cv2.HoughLinesP(
         canny,
         1,                # rho resolution
         np.pi / 180,      # theta resolution
-        50,               # threshold
-        minLineLength=100,
-        maxLineGap=20
+        150,               # threshold
+        minLineLength=150,
+        maxLineGap=50
     )
 
-    # We'll cluster lines purely by slope (angle).
-    # Then draw them in different colors based on cluster.
+    # Filter out purely vertical / horizontal lines
+    hough_lines = []
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            # Check for purely vertical lines
+            if x2 - x1 == 0:
+                continue
+            slope = (y2 - y1) / (x2 - x1)
+            if slope != 0:
+                hough_lines.append([x1, y1, x2, y2, slope])
 
-    # Prepare a copy for clustering visualization
-    cluster_output = frame.copy()
+    return hough_lines
 
-    if lines is None or len(lines) == 0:
-        print("No lines found via HoughLinesP.")
-        # Show the masked image anyway
-        cv2.imshow("Masked to Green Field", frame_masked)
-        cv2.imshow("Clustered Lines (None found)", cluster_output)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        return
 
-    # Build a feature vector: [ slope ]
-    # slope = (y2 - y1)/(x2 - x1), or a large number for vertical lines
-    slopes = []
-    lines_data = []  # store (x1, y1, x2, y2) for each line
+def line_segment_intersection(l1, l2):
+    """
+    Return the (x, y) intersection of two line segments (if it exists),
+    otherwise return None.
 
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
-        dx = x2 - x1
-        dy = y2 - y1
-        if dx == 0:
-            slope = 9999.0  # represent vertical lines with a large slope
+    Each line is [x1, y1, x2, y2, m].
+    """
+    x1, y1, x2, y2, m1 = l1
+    x3, y3, x4, y4, m2 = l2
+
+    # Convert each segment to general line form: A*x + B*y = C
+    A1 = y2 - y1
+    B1 = x1 - x2
+    C1 = A1 * x1 + B1 * y1
+
+    A2 = y4 - y3
+    B2 = x3 - x4
+    C2 = A2 * x3 + B2 * y3
+
+    determinant = A1 * B2 - A2 * B1
+
+    # If determinant is 0, lines are parallel or coincident
+    if determinant == 0:
+        return None
+
+    # Intersection point of the infinite lines
+    x_int = (B2 * C1 - B1 * C2) / determinant
+    y_int = (A1 * C2 - A2 * C1) / determinant
+
+    # Check if within segment bounds for both lines
+    if (min(x1, x2) <= x_int <= max(x1, x2) and
+        min(y1, y2) <= y_int <= max(y1, y2) and
+        min(x3, x4) <= x_int <= max(x3, x4) and
+        min(y3, y4) <= y_int <= max(y3, y4)):
+        return (x_int, y_int)
+
+    return None
+
+
+def main():
+    """
+    Command-line entry point so you can run:
+        python3 detector_v4.py offside.png
+    This will run detector_v4() on the supplied image, 
+    display the detected lines, and print their intersections.
+    """
+    if len(sys.argv) < 2:
+        print("Usage: python3 detector_v4.py <path_to_image>")
+        sys.exit(1)
+
+    image_path = sys.argv[1]
+    image = cv2.imread(image_path)
+
+    if image is None:
+        print(f"Could not load image from {image_path}")
+        sys.exit(1)
+
+    lines = detector_v4(image)
+    clusters = cluster_lines(lines)
+    for cluster in clusters.values():
+        print(cluster)
+
+    # Draw lines
+    output = image.copy()
+    for idx, (x1, y1, x2, y2, m) in enumerate(lines):
+        slope = (y2 - y1) / (x2 - x1)
+        # If slope is positive, draw red (BGR -> (0, 0, 255)), if negative, blue (255, 0, 0)
+        if slope > 0:
+            color = (0, 0, 255)  # red
         else:
-            slope = dy / float(dx)
+            color = (255, 0, 0)  # blue
+        cv2.line(output, (x1, y1), (x2, y2), color, 2)
 
-        slopes.append([slope])
-        lines_data.append((x1, y1, x2, y2))
-    print(slopes)
-    slopes = np.array(slopes, dtype=np.float32)
+    print(f"Detected {len(lines)} line(s).")
 
-    #
-    # 2) K-Means Clustering by slope
-    #
-    # For a field with mostly horizontal & vertical lines, you might try n_clusters=2
-    # If you have diagonal lines as well, try n_clusters=3 or more.
-    n_clusters = 3
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    labels = kmeans.fit_predict(slopes)
+    # 1. Compute intersections for each pair of lines
+    intersections = []
+    n_lines = len(lines)
+    for i in range(n_lines):
+        for j in range(i + 1, n_lines):
+            point = line_segment_intersection(lines[i], lines[j])
+            if point is not None:
+                intersections.append(point)
+                print(f"Intersection of line {i} with line {j} at ("
+                      f"{round(point[0], 2)}, {round(point[1], 2)})")
 
-    # We'll define a set of colors for up to 5 clusters; adjust as needed
-    color_table = [
-        (0, 0, 255),    # red
-        (0, 255, 0),    # green
-        (255, 0, 0),    # blue
-        (0, 255, 255),  # yellow
-        (255, 0, 255),  # magenta
-    ]
+    # 2. Check for duplicate intersections (rounded)
+    intersection_counts = {}
+    for pt in intersections:
+        rounded = (round(pt[0], 2), round(pt[1], 2))
+        intersection_counts[rounded] = intersection_counts.get(rounded, 0) + 1
 
-    # Draw lines in different colors based on cluster label
-    for i, (x1, y1, x2, y2) in enumerate(lines_data):
-        cluster_id = labels[i]
-        color = color_table[cluster_id % len(color_table)]
-        cv2.line(cluster_output, (x1, y1), (x2, y2), color, 2)
+    duplicates = {k: v for k, v in intersection_counts.items() if v > 1}
+    if duplicates:
+        print("\nDuplicate intersections found:")
+        for k, v in duplicates.items():
+            print(f"  Intersection {k} appears {v} times.")
+    else:
+        print("\nNo duplicate intersections found.")
 
-    # Show windows
-    cv2.imshow("Masked to Green Field", frame_masked)
-    cv2.imshow("Clustered Lines by Slope", cluster_output)
+    print("Press any key to close the result window.")
 
-    print(f"Found {len(lines)} lines, clustered into {n_clusters} groups by slope.")
-    print("Press any key to close.")
+    # Show output
+    cv2.imshow("Detector v4 - Hough Lines", output)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
     main()
+
+

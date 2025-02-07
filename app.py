@@ -66,27 +66,20 @@ def get_lines():
 
         # 4. Detect all lines using detector_v4
         #    Assume detector_v4 returns lines in the format: [x1, y1, x2, y2, slope]
-        detected_lines = detector_v4(cv_img)
+        intersection_point = detector_v4(cv_img)
 
-        if not detected_lines:
+        if not intersection_point:
             logger.info("No lines detected in the image.")
             return jsonify({"lines": []}), 200
 
         # 5. (Optional) Ensure that the detected lines are in pure Python types.
         #    This step converts NumPy types (e.g., np.int32, np.float64) into native Python types.
-        lines = []
-        for line in detected_lines:
-            x1, y1, x2, y2, slope = line
-            lines.append({
-                "x1": int(x1),
-                "y1": int(y1),
-                "x2": int(x2),
-                "y2": int(y2),
-                "slope": float(slope) if slope is not None else None
-            })
+        json_intersection_point = {
+            "x": intersection_point[0],
+            "y": intersection_point[1]
+        }   
 
-
-        return jsonify({"lines": lines}), 200
+        return jsonify({"intersection_point": json_intersection_point}), 200    
 
     except Exception as e:
         logger.exception("Error processing the image.")
