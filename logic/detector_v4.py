@@ -10,10 +10,10 @@ from logic.line_clustering import cluster_lines
 def detector_v4(input_image):
     """
     Similar to detector_v2, this function accepts an input image and returns
-    the list of hough_lines that are neither purely vertical nor purely horizontal.
-
-    :param input_image: A BGR image (NumPy array) read by OpenCV.
-    :return: A list of lines (each line is [x1, y1, x2, y2]) that passed the slope filter.
+    two lines (each line is [x1, y1, x2, y2, slope]) that:
+      1) Are among the top 25% longest positive-slope lines detected.
+      2) Are the farthest apart by any endpoint distance 
+         (so we don't just detect two portions of the same line).
     """
 
     # Convert from BGR to HSV
@@ -64,24 +64,59 @@ def detector_v4(input_image):
                 continue
             slope = (y2 - y1) / (x2 - x1)
             # Skip slope == 0 as well
-            if slope != 0:
-                # Keep only positive slopes for "red" lines
-                if slope > 0:
-                    # Compute line length
-                    length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-                    red_lines.append([x1, y1, x2, y2, slope, length])
+            if slope > 0:
+                # Compute line length
+                length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                red_lines.append([x1, y1, x2, y2, slope, length])
 
-    # Sort red_lines by length (desc), then keep only the top two
+    # Sort red_lines by length (desc), then keep only the top 25%
     red_lines.sort(key=lambda ln: ln[5], reverse=True)
-    longest_red_lines = red_lines[:2]
+    if len(red_lines) == 0:
+        return []  # no lines at all
 
+    num_top_25 = max(1, int(len(red_lines) * 0.5))
+    top_25pct_lines = red_lines[:num_top_25]
+
+    # If we only have one line in top 25%, just return that single line (minus the length field)
+    if len(top_25pct_lines) < 2:
+        return [[ln[0], ln[1], ln[2], ln[3], ln[4]] for ln in top_25pct_lines]
+
+    # --------------------- REPLACE midpoint LOGIC WITH ENDPOINTS LOGIC --------------------- #
+    def endpoints_max_dist(lineA, lineB):
+        """
+        Returns the maximum distance among any combination of endpoints
+        from lineA and lineB. Each line is [x1, y1, x2, y2, slope, length].
+        """
+        x1A, y1A, x2A, y2A, slopeA, lenA = lineA
+        x1B, y1B, x2B, y2B, slopeB, lenB = lineB
+
+        endpointsA = [(x1A, y1A), (x2A, y2A)]
+        endpointsB = [(x1B, y1B), (x2B, y2B)]
+
+        max_d = 0
+        for (xa, ya) in endpointsA:
+            for (xb, yb) in endpointsB:
+                dist = np.hypot(xb - xa, yb - ya)
+                if dist > max_d:
+                    max_d = dist
+        return max_d
+
+    max_dist = -1
+    best_pair = None
+    for i in range(len(top_25pct_lines)):
+        for j in range(i + 1, len(top_25pct_lines)):
+            dist = endpoints_max_dist(top_25pct_lines[i], top_25pct_lines[j])
+            if dist > max_dist:
+                max_dist = dist
+                best_pair = (top_25pct_lines[i], top_25pct_lines[j])
+
+    # best_pair holds two lines that are farthest apart by endpoint distance
+    lineA, lineB = best_pair
     final_lines = []
+    for ln in [lineA, lineB]:
+        x1, y1, x2, y2, slope, length = ln
+        final_lines.append([x1, y1, x2, y2, slope])
 
-    for line in longest_red_lines:
-        temp = [line[0], line[1], line[2], line[3], line[4]]
-        final_lines.append(temp)
-
-    # Return only the two longest "red" lines
     return final_lines
 
 
@@ -142,60 +177,23 @@ def main():
         print(f"Could not load image from {image_path}")
         sys.exit(1)
 
-    # Now lines will be just the two longest red lines
+    # lines now contains exactly two lines (or fewer if top-25% < 2 lines)
     lines = detector_v4(image)
-    clusters = cluster_lines(lines)
-    for cluster in clusters.values():
-        print(cluster)
+    print(f"Detected {len(lines)} final line(s).")
 
     # Draw lines
     output = image.copy()
-    for idx, (x1, y1, x2, y2, m) in enumerate(lines):
-        slope = (y2 - y1) / (x2 - x1)
-        # If slope is positive, draw red (BGR -> (0, 0, 255)), if negative, blue (255, 0, 0)
-        if slope > 0:
-            color = (0, 0, 255)  # red
-        else:
-            color = (255, 0, 0)  # blue
-        cv2.line(output, (x1, y1), (x2, y2), color, 2)
+    for (x1, y1, x2, y2, slope) in lines:
+        color = (0, 0, 255)  # red
+        cv2.line(output, (x1, y1), (x2, y2), color, 1)
 
-    print(f"Detected {len(lines)} line(s).")
-
-    # 1. Compute intersections for each pair of lines
-    intersections = []
-    n_lines = len(lines)
-    for i in range(n_lines):
-        for j in range(i + 1, n_lines):
-            point = line_segment_intersection(lines[i], lines[j])
-            if point is not None:
-                intersections.append(point)
-                print(f"Intersection of line {i} with line {j} at ("
-                      f"{round(point[0], 2)}, {round(point[1], 2)})")
-
-    # 2. Check for duplicate intersections (rounded)
-    intersection_counts = {}
-    for pt in intersections:
-        rounded = (round(pt[0], 2), round(pt[1], 2))
-        intersection_counts[rounded] = intersection_counts.get(rounded, 0) + 1
-
-    duplicates = {k: v for k, v in intersection_counts.items() if v > 1}
-    if duplicates:
-        print("\nDuplicate intersections found:")
-        for k, v in duplicates.items():
-            print(f"  Intersection {k} appears {v} times.")
-    else:
-        print("\nNo duplicate intersections found.")
-
-    print("Press any key to close the result window.")
-
-    # Show output
-    cv2.imshow("Detector v4 - Hough Lines", output)
+    cv2.imshow("detector_v4 - final lines", output)
+    print("Press any key to close.")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
     main()
-
-
 '''
+
