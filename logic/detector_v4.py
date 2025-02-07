@@ -4,7 +4,7 @@ import sys
 import cv2
 import numpy as np
 
-from line_clustering import cluster_lines
+from logic.line_clustering import cluster_lines
 
 
 def detector_v4(input_image):
