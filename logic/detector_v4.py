@@ -117,7 +117,7 @@ def line_segment_intersection(l1, l2):
 
     return None
 
-
+'''
 def main():
     """
     Command-line entry point so you can run:
@@ -192,3 +192,4 @@ if __name__ == "__main__":
     main()
 
 
+'''
