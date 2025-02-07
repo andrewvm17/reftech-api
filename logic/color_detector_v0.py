@@ -73,28 +73,4 @@ def get_prominent_colors(image_path, K=7, show_plot=False, apply_blur=True):
 
     return centers, counts, dominant_color
 
-# Example usage:
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python color_detector_v0.py <image_path> [K=7]")
-        sys.exit(1)
 
-    image_path = sys.argv[1]
-
-    # Use K=7 (or a higher number) to better separate subtle color differences
-    K = 7
-    if len(sys.argv) == 3:
-        try:
-            K = int(sys.argv[2])
-        except ValueError:
-            print("K must be an integer. Using default K=7.")
-
-    # Run the color detection with more sensitive parameters
-    centers, counts, field_color = get_prominent_colors(image_path, K=K, show_plot=True, apply_blur=True)
-
-    print("\nCluster centers (in HSV):")
-    for idx, center in enumerate(centers):
-        print(f"Cluster {idx}: {center}, Count: {counts[idx]}")
-
-    print("\nAssumed field (most prominent) color (HSV):")
-    print(field_color)

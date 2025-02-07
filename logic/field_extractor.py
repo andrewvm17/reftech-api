@@ -73,26 +73,4 @@ def extract_field_mask(image_bgr, hue_range=10, morph_size=15):
 
     return field_mask
 
-def main():
-    # Parse command line
-    if len(sys.argv) < 2:
-        print("Usage: python field_extractor.py path/to/image.png")
-        sys.exit(1)
 
-    image_path = sys.argv[1]
-    image_bgr = cv2.imread(image_path)
-    if image_bgr is None:
-        print(f"Error: Unable to read image: {image_path}")
-        sys.exit(1)
-    
-    # Extract the field
-    field_mask = extract_field_mask(image_bgr)
-
-    # Show result
-    cv2.imshow("Field Mask", field_mask)
-    print("Press any key in the image window to exit...")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-if __name__ == "__main__":
-    main()
