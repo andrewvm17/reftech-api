@@ -32,7 +32,7 @@ def detector_v4(input_image):
     
     # Keep only the green field
     frame_masked_green = cv2.bitwise_and(input_image, input_image, mask=mask_green)
-    cv2.imshow("Frame Masked Green", frame_masked_green)
+    #cv2.imshow("Frame Masked Green", frame_masked_green)
    # frame_masked_white = cv2.bitwise_and(frame_masked_green, frame_masked_green, mask=mask_white)
     #cv2.imshow("Frame Masked White", frame_masked_white)
     # Convert to grayscale
@@ -43,7 +43,7 @@ def detector_v4(input_image):
     #cv2.imshow("Thresh", thresh)
     # Canny edge detection
     canny = cv2.Canny(gray, 1, 150, apertureSize=3, L2gradient=True)
-    cv2.imshow("Canny", canny)
+    #cv2.imshow("Canny", canny)
     # Apply Hough Line Detection (Probabilistic)
     lines = cv2.HoughLinesP(
         canny,
