@@ -33,8 +33,8 @@ def handle_exception(e):
     logger.error(f"Unhandled Exception: {e}")
     return jsonify({"error": "Internal Server Error"}), 500
 
-@app.route('/get-lines', methods=['POST'])
-def get_lines():
+@app.route('/get-vanishingpoint', methods=['POST'])
+def get_vanishingpoint():
     """
     Process an uploaded image, detect all lines, cluster them, and return a best-fit line per cluster.
     
@@ -66,20 +66,20 @@ def get_lines():
 
         # 4. Detect all lines using detector_v4
         #    Assume detector_v4 returns lines in the format: [x1, y1, x2, y2, slope]
-        intersection_point = detector_v4(cv_img)
+        vanishing_point = detector_v4(cv_img)
 
-        if intersection_point is None:
-            logger.info("No lines detected in the image.")
-            return jsonify({"lines": []}), 200
+        if vanishing_point is None:
+            logger.info("No vanishing point detected in the image.")
+            return jsonify({"vanishing_point": []}), 200
 
         # 5. (Optional) Ensure that the detected lines are in pure Python types.
         #    This step converts NumPy types (e.g., np.int32, np.float64) into native Python types.
-        json_intersection_point = {
-            "x": intersection_point[0],
-            "y": intersection_point[1]
+        json_vanishing_point = {
+            "x": vanishing_point[0],
+            "y": vanishing_point[1]
         }   
 
-        return jsonify({"intersection_point": json_intersection_point}), 200    
+        return jsonify({"vanishing_point": json_vanishing_point}), 200    
 
     except Exception as e:
         logger.exception("Error processing the image.")
