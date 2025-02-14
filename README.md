@@ -1,2 +1,3 @@
 # thevarhub-api
-Standalone flask microservice acting as API for thevarhub clients.
+
+Standalone flask microservice acting as API for reftech.io clients.
